@@ -38,8 +38,8 @@ from g4f.providers.any_provider import AnyProvider
 # (fine for local use, e.g. on localhost only).
 SAMPLE_API_KEY = os.getenv("SAMPLE_API_KEY")
 
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "gpt-4o-mini")
-DEFAULT_PROVIDER = os.getenv("DEFAULT_PROVIDER") or None
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "openai-fast")
+DEFAULT_PROVIDER = os.getenv("DEFAULT_PROVIDER", "Pollinations") or None
 
 app = FastAPI(title="gpt4free FastAPI sample", version="0.1.0")
 client = AsyncClient()

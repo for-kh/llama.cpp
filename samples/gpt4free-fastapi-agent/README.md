@@ -6,6 +6,10 @@ A small, self-contained FastAPI server that exposes an OpenAI-compatible
 minimal reference you can point Codex CLI, or any other code agent /
 tool that speaks the OpenAI API, at.
 
+**No API key required.** By default this sample uses g4f's `Pollinations`
+provider (model `openai-fast`), which is free and needs no account, key,
+or login — it just works out of the box.
+
 > This sample is unrelated to llama.cpp's core inference engine — it lives
 > here only as a self-contained example and does not build or run as part
 > of the C++ project. `gpt4free` proxies third-party providers with no SLA
@@ -53,10 +57,12 @@ python main.py
 curl http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4o-mini",
+    "model": "openai-fast",
     "messages": [{"role": "user", "content": "Say hello in one word"}]
   }'
 ```
+
+No `Authorization` header is needed unless you set `SAMPLE_API_KEY`.
 
 Streaming works the same way OpenAI's API does — pass `"stream": true` and
 read the `data: ...` Server-Sent-Events lines.
@@ -69,19 +75,33 @@ and key via environment variables. Point them at this server instead of
 
 ```bash
 export OPENAI_BASE_URL=http://localhost:8000/v1
-export OPENAI_API_KEY=local-dev-key   # must match SAMPLE_API_KEY if you set one, else any value
+export OPENAI_API_KEY=anything   # most CLIs require this var to be non-empty, but the value is ignored unless you set SAMPLE_API_KEY
 ```
 
 Then run your agent as usual (e.g. `codex`, or any tool that reads
 `OPENAI_BASE_URL`/`OPENAI_API_KEY`). Check your agent's docs for the exact
 variable names it expects — some use `OPENAI_API_BASE` instead.
 
+## Why not real chatgpt.com?
+
+g4f can also drive the actual chatgpt.com web UI (provider `OpenaiChat`),
+which avoids OpenAI's paid API but is *not* auth-free in practice: chatgpt.com
+sits behind Cloudflare, so g4f needs either a HAR file exported from a
+logged-in browser session or automated browser login (`nodriver`), and it
+still breaks whenever OpenAI changes their anti-bot checks. `Pollinations`
+was picked as the default instead because it needs zero setup and just
+works. If you want to try `OpenaiChat` anyway, set
+`DEFAULT_PROVIDER=OpenaiChat` and see g4f's README for HAR-file/cookie
+setup (the "har_and_cookies" directory):
+https://github.com/xtekky/gpt4free#readme
+
 ## Notes / limitations
 
 - No tool/function-calling, vision, or image endpoints — only text chat.
 - Model availability depends entirely on which upstream providers gpt4free
   can currently reach; `GET /v1/models` lists what g4f believes is
-  available right now.
+  available right now, across all providers (not just the no-auth default).
 - Authentication is a single shared bearer token (`SAMPLE_API_KEY`),
   suitable for local development only — do not expose this server to the
-  public internet as-is.
+  public internet as-is. It's disabled by default, and is unrelated to
+  whether the upstream provider (Pollinations) needs a key — it doesn't.
