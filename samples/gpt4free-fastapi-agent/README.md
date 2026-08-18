@@ -1,7 +1,7 @@
 # gpt4free FastAPI sample
 
 A small, self-contained FastAPI server that exposes an OpenAI-compatible
-`/v1/chat/completions` and `/v1/models` API backed by
+`/v1/chat/completions`, `/v1/responses`, and `/v1/models` API backed by
 [gpt4free (g4f)](https://github.com/xtekky/gpt4free). It's meant as a
 minimal reference you can point Codex CLI, or any other code agent /
 tool that speaks the OpenAI API, at.
@@ -18,13 +18,16 @@ or login — it just works out of the box.
 
 ## What's here
 
-- `main.py` — the FastAPI app (~130 lines)
+- `main.py` — the FastAPI app
 - `requirements.txt`
 - `.env.example` — optional configuration
 
 Unlike gpt4free's own bundled server (`g4f api`), this sample only
-implements chat completions and model listing, so it's easy to read
-end-to-end and extend.
+implements chat completions, the Responses API, and model listing, so
+it's easy to read end-to-end and extend. Both `/v1/chat/completions` and
+`/v1/responses` are backed by the same free, no-auth provider — they're
+just two different request/response shapes over the same underlying
+completion.
 
 ## Setup
 
@@ -67,6 +70,14 @@ No `Authorization` header is needed unless you set `SAMPLE_API_KEY`.
 Streaming works the same way OpenAI's API does — pass `"stream": true` and
 read the `data: ...` Server-Sent-Events lines.
 
+Or, using the Responses API shape (what Codex CLI sends):
+
+```bash
+curl http://localhost:8000/v1/responses \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-4o", "input": "Say hello in one word"}'
+```
+
 ## Using it with a code agent (Codex CLI, etc.)
 
 Most OpenAI-API-compatible CLI agents let you override the API base URL
@@ -81,6 +92,41 @@ export OPENAI_API_KEY=anything   # most CLIs require this var to be non-empty, b
 Then run your agent as usual (e.g. `codex`, or any tool that reads
 `OPENAI_BASE_URL`/`OPENAI_API_KEY`). Check your agent's docs for the exact
 variable names it expects — some use `OPENAI_API_BASE` instead.
+
+### Codex CLI specifically
+
+Codex CLI talks to custom providers via `~/.codex/config.toml`, and its
+`wire_api` setting picks which request/response shape it sends — `"chat"`
+for `/v1/chat/completions`, or `"responses"` for `/v1/responses`. This
+sample implements both, so either works; here's the `"responses"` form:
+
+```toml
+model = "gpt-4o"
+model_provider = "my_custom_proxy"
+
+[model_providers.my_custom_proxy]
+name = "Custom AI Proxy Gateway"
+base_url = "http://localhost:8000/v1"
+wire_api = "responses"
+```
+
+Notes:
+- Leave out `env_key` entirely — with no `env_key`, Codex sends no
+  `Authorization` header, which matches this server's default (auth
+  disabled). If you set `SAMPLE_API_KEY`, add `env_key = "OPENAI_API_KEY"`
+  here and export that variable before running `codex`.
+- `model = "gpt-4o"` is just a label Codex sends along with the request;
+  this server ignores it and always answers from `DEFAULT_MODEL`/
+  `DEFAULT_PROVIDER` (see `.env.example`). It is **not** real GPT-4o —
+  see "Why not real chatgpt.com?" below for why.
+- If you deploy this server somewhere other than your machine, change
+  `base_url` to that address (must end in `/v1`) — e.g.
+  `https://your-own-domain.example/v1`. Only point it at a host you
+  control and trust; anyone who can reach that URL can read/inject into
+  your Codex sessions.
+- `/v1/responses` here covers plain text messages (streaming and
+  non-streaming) — no tool calls, reasoning items, or file/image inputs.
+  If Codex sends those, this server will just ignore the extra fields.
 
 ## Why not real chatgpt.com?
 
